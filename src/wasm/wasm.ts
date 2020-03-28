@@ -1,4 +1,4 @@
-import { findIndex, pick, prop, uniq } from 'ramda'
+import { equals, findIndex, uniq } from 'ramda'
 
 export const header = [0x00, 0x61, 0x73, 0x6D] // "\0asm"
 
@@ -42,7 +42,7 @@ export const float = (n: number) => {
 
 export const vector = (data: any[]) => [...uint(data.length), ...data].flat()
 
-export const string = (str: string) => [str.length, ...str.split('').map(ch => ch.charCodeAt(0))]
+export const encodeString = (str: string) => [str.length, ...str.split('').map(ch => ch.charCodeAt(0))]
 
 export enum valtype {
   i32 = 0x7F,
@@ -264,11 +264,24 @@ export enum SectionId {
   Data     = 11,
 }
 
+export enum ExportDesc {
+  Func   = 0,
+  Table  = 1,
+  Mem    = 2,
+  Global = 3,
+}
+
+interface FuncType {
+  params:  valtype[],
+  results: valtype[],
+}
+
 interface FuncSpec {
   name?: string,
   shouldExport?: boolean,
   params?: valtype[],
   results?: valtype[],
+  locals?: valtype[],
   code: any[],
 }
 
@@ -278,10 +291,13 @@ interface ModuleSpec {
   functions?: FuncSpec[],
 }
 
-export const extractFnType = pick(['params', 'results'])
+export const extractFnType = (spec: FuncSpec) => ({
+  params: spec.params || [],
+  results: spec.results || [],
+})
 
 export const encodeModule = (spec: ModuleSpec) => {
-  let fnTypes: FuncType[] = uniq((spec.functions || []).map(extractFnType))
+  let fnTypes: any[] = uniq((spec.functions || []).map(extractFnType))
 
   let bytes = [
     ...header, // magic header of "\0asm"
@@ -289,16 +305,12 @@ export const encodeModule = (spec: ModuleSpec) => {
     ...encodeTypeSection(fnTypes),
     ...encodeFuncSection(fnTypes, spec.functions),
     ...encodeExportSection(spec.functions),
+    ...encodeCodeSection(spec.functions),
   ]
   return bytes
 }
 
 export const encodeContent = (bytes: number[]) => [bytes.length, ...bytes]
-
-interface FuncType {
-  params:  valtype[],
-  results: valtype[],
-}
 
 export const encodeFuncType = (ft: FuncType) => {
   const bytes = [
@@ -323,11 +335,20 @@ export const encodeTypeSection = (fts: FuncType[] = []) => {
 export const encodeFuncSection = (fts: FuncType[] = [], fns: FuncSpec[] = []) => {
   if (fns.length === 0) return []
 
-  const indexes = fns.map(spec => findIndex(extractFnType, fts))
+  const indexes = fns.map(extractFnType).map(ft => findIndex(equals(ft), fts))
   return [
     SectionId.Function,
     ...encodeContent(vector(indexes))
   ]
+}
+
+export const encodeFunctionExport = (fn: FuncSpec & { idx: number }) => {
+  const bytes = [
+    ...encodeString(fn.name || ''),
+    ExportDesc.Func,
+    fn.idx
+  ]
+  return bytes
 }
 
 export const encodeExportSection = (fns: FuncSpec[] = []) => {
@@ -337,11 +358,29 @@ export const encodeExportSection = (fns: FuncSpec[] = []) => {
     fnExports.push({ ...fn, idx })
   })
   if (fnExports.length === 0) return []
-  console.log(fnExports)
-  const exportItems: any = []
+  const exportItems = fnExports.map(encodeFunctionExport)
   return [
     SectionId.Export,
     ...encodeContent(vector(exportItems))
+  ]
+}
+
+export const encodeCodeSection = (fns: FuncSpec[] = []) => {
+  if (fns.length === 0) return []
+  const content: number[] = vector(fns.map(encodeCodeEntry))
+  return [
+    SectionId.Code,
+    ...encodeContent(content),
+  ]
+}
+
+export const encodeCodeEntry = (fn: FuncSpec) => {
+  const contents: number[] = [
+    ...vector(fn.locals || []),
+    ...fn.code,
+  ]
+  return [
+    ...encodeContent(contents)
   ]
 }
 
@@ -351,4 +390,5 @@ export const encodeOp = (op: Op, params: any) => {
     case Op.localGet: return [Op.localGet, ...uint(params)]
     case Op.i32Add: return [Op.i32Add]
   }
+  throw new Error(`Unhandled opcode ${op} ${Op[op]}`)
 }
