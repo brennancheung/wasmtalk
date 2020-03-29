@@ -9,6 +9,10 @@ class ByteReader {
     this.cursor = 0
   }
 
+  static from (bytes: number[]) {
+    return new ByteReader(new Uint8Array(bytes))
+  }
+
   read (numBytes: number): Result<{ size: number, bytes: number[] }> {
     const len = this.bytes.length
     const end = (this.cursor + numBytes <= len)

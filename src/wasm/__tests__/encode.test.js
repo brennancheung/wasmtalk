@@ -7,25 +7,25 @@ import {
   float,
   uint,
   sint,
-  valtype,
+  ValType,
   vector,
   Op,
 } from '../wasm'
 
-describe('valtype', () => {
-  it('encodes valtype to binary', () => {
-    expect(valtype.i32).toEqual(0x7F)
-    expect(valtype.i64).toEqual(0x7E)
-    expect(valtype.f32).toEqual(0x7D)
-    expect(valtype.f64).toEqual(0x7C)
+describe('ValType', () => {
+  it('encodes ValType to binary', () => {
+    expect(ValType.i32).toEqual(0x7F)
+    expect(ValType.i64).toEqual(0x7E)
+    expect(ValType.f32).toEqual(0x7D)
+    expect(ValType.f64).toEqual(0x7C)
   })
 
-  it('decodes binary to valtype string', () => {
-    expect(valtype[0x7F]).toEqual('i32')
+  it('decodes binary to ValType string', () => {
+    expect(ValType[0x7F]).toEqual('i32')
   })
 
-  it('decodes binary to valtype enum', () => {
-    expect(0x7F).toEqual(valtype.i32)
+  it('decodes binary to ValType enum', () => {
+    expect(0x7F).toEqual(ValType.i32)
   })
 })
 
@@ -70,8 +70,8 @@ describe('module encoding', () => {
       functions: [
         {
           name: 'add',
-          params: [valtype.i32, valtype.i32],
-          results: [valtype.i32],
+          params: [ValType.i32, ValType.i32],
+          results: [ValType.i32],
           code: [
             ...encodeOp(Op.localGet, 0),
             ...encodeOp(Op.localGet, 1),
@@ -91,7 +91,7 @@ describe('type section', () => {
   it('encodes a simple type section', () => {
 
     const data = encodeTypeSection([
-      { params: [valtype.i32, valtype.i32], results: [valtype.i32] }
+      { params: [ValType.i32, ValType.i32], results: [ValType.i32] }
     ])
     expect(data).toEqual([
       0x01, 0x07, 0x01, 0x60, // type section

@@ -1,5 +1,6 @@
 import ByteReader from '../ByteReader'
-import { header, SectionId } from '../wasm'
+import Result from '../../fp/Result'
+import { header, SectionId, ValType } from '../wasm'
 import { decodeWasm, readUint, readSection } from '../decode'
 import { adderBytes, typeSection, functionSection } from '../mocks/mocks'
 
@@ -67,7 +68,7 @@ describe('section decoding', () => {
 
   it('only accepts known section headers', () => {
     const section = readSection(new ByteReader(bytes))
-    expect(section.unwrap()).toMatchObject({ id: SectionId.Type, content: typeSection.slice(2) })
+    expect(section.unwrap()).toMatchObject({ id: SectionId.Type })
   })
 
   it('rejects sections that are too short', () => {
@@ -81,13 +82,23 @@ describe('section decoding', () => {
     const bytes = new Uint8Array([ ...typeSection, ...functionSection ])
     const reader = new ByteReader(bytes)
 
-    expect(readSection(reader).unwrap()).toEqual({ id: SectionId.Type, content: typeSection.slice(2) })
-    expect(readSection(reader).unwrap()).toEqual({ id: SectionId.Function, content: functionSection.slice(2) })
+    expect(readSection(reader).unwrap()).toMatchObject({ id: SectionId.Type })
+    expect(readSection(reader).unwrap()).toMatchObject({ id: SectionId.Function })
     const result = readSection(reader)
-    expect(result.unwrap()).toEqual(null)
+    expect(result).toEqual(Result.none)
   })
 })
 
 describe('type section decoding', () => {
-
+  it('decodes the types', () => {
+    const reader = ByteReader.from(typeSection)
+    const result = readSection(reader)
+    expect(result.isOk).toEqual(true)
+    expect(result.unwrap()).toMatchObject({
+      id: SectionId.Type,
+      content: [
+        { params: [ValType.i32, ValType.i32], results: [ValType.i32] },
+      ]
+    })
+  })
 })

@@ -44,7 +44,7 @@ export const vector = (data: any[]) => [...uint(data.length), ...data].flat()
 
 export const encodeString = (str: string) => [str.length, ...str.split('').map(ch => ch.charCodeAt(0))]
 
-export enum valtype {
+export enum ValType {
   i32 = 0x7F,
   i64 = 0x7E,
   f32 = 0x7D,
@@ -272,16 +272,16 @@ export enum ExportDesc {
 }
 
 interface FuncType {
-  params:  valtype[],
-  results: valtype[],
+  params:  ValType[],
+  results: ValType[],
 }
 
 interface FuncSpec {
   name?: string,
   shouldExport?: boolean,
-  params?: valtype[],
-  results?: valtype[],
-  locals?: valtype[],
+  params?: ValType[],
+  results?: ValType[],
+  locals?: ValType[],
   code: any[],
 }
 

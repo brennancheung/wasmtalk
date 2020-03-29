@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { encodeModule, encodeOp, valtype, Op } from './wasm/wasm'
+import { encodeModule, encodeOp, ValType, Op } from './wasm/wasm'
 
 var importObj = {
   imports: { log: (arg) => console.log(arg) }
@@ -9,8 +9,8 @@ const spec = {
   functions: [
     {
       name: 'add',
-      params: [valtype.i32, valtype.i32],
-      results: [valtype.i32],
+      params: [ValType.i32, ValType.i32],
+      results: [ValType.i32],
       code: [
         ...encodeOp(Op.localGet, 0),
         ...encodeOp(Op.localGet, 1),
