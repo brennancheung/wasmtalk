@@ -1,5 +1,4 @@
 import ByteReader from '../ByteReader'
-import Result  from '../../fp/Result'
 
 const empty = new Uint8Array([])
 const sample = new Uint8Array([0, 1, 2, 3, 4, 5])
@@ -9,7 +8,7 @@ describe('ByteReader', () => {
     it('reads when empty', () => {
       const reader = new ByteReader(empty)
       const result = reader.read(100)
-      expect(result.isOk()).toEqual(true)
+      expect(result.isOk).toEqual(true)
       expect(result.unwrap()).toMatchObject({ size: 0 })
     })
 
@@ -36,7 +35,7 @@ describe('ByteReader', () => {
     it('errors when there are insufficient bytes', () => {
       const reader = new ByteReader(sample)
       let result = reader.readExact(100)
-      expect(result.isErr()).toEqual(true)
+      expect(result.isErr).toEqual(true)
     })
 
     it('performs consecutive reads', () => {
@@ -48,7 +47,7 @@ describe('ByteReader', () => {
       expect(result.unwrap()).toEqual([3, 4, 5])
 
       result = reader.readExact(3)
-      expect(result.isErr()).toEqual(true)
+      expect(result.isErr).toEqual(true)
     })
 
     // TODO: This should really be using Kleisli composition
@@ -60,10 +59,10 @@ describe('ByteReader', () => {
           return reader.readExact(100)
         })
         .bind(value => {
-          expect(value.isErr()).toEqual(true)
+          expect(value.isErr).toEqual(true)
           return reader.readExact(3)
         })
-      expect(result.isErr()).toEqual(true)
+      expect(result.isErr).toEqual(true)
     })
   })
 })

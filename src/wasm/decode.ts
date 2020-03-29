@@ -12,42 +12,49 @@ export const decodeU32 = (bytes: number[]) => {
   return num
 }
 
-export const decodeWasm = (bytes: Uint8Array)  => {
+export const decodeWasm = (bytes: Uint8Array) => {
   const reader = new ByteReader(bytes)
 
-  const maybeHeader = reader.read(4)
-  if (maybeHeader.size !== 4) return { valid: false, reason: 'Invalid header' }
-  if (!equals(maybeHeader.bytes, header)) return { valid: false, reason: 'Invalid header' }
-
-  let maybeVersion = reader.read(4)
-  if (maybeVersion.size !== 4) return { valid: false, reason: 'Invalid version' }
-  const version = decodeU32(maybeVersion.bytes)
-  return { valid: true, version }
+  return Result.pipeK<number[]>(
+    (_header: number[]) => {
+      if (!equals(Array.from(_header), header)) return Result.throw('Invalid header')
+      return Result.from(true) // value could be anything, we ignore it in the next step
+    },
+    () => reader.readExact(4),
+    bytes => Result.from(decodeU32(bytes)),
+    version => Result.from({ version })
+  )(reader.readExact(4))
 }
 
 export const readSection = (reader: ByteReader) => {
-  const maybeSectionId = reader.read(1)
-  if (maybeSectionId.size === 0) return { valid: true, contents: null }
-  const sectionId = maybeSectionId.bytes[0]
-  if (!SectionId[sectionId]) return { valid: false, reason: 'Unknown section type' }
+  let section:any = {}
 
-  const maybeContentSize = readUint(reader)
-  if (!maybeContentSize.valid) return { valid: false, reason: 'Insufficient bytes (reading uint)'}
-  const contentSize = maybeContentSize.value || 0
+  // The WASM binary doesn't provide a total size to expect at the beginning of
+  // the file so we have no choice but to try to read and if there are
+  // no more bytes for a section then it is the end of the file.
+  const initial = reader.readByte()
+  if (initial.isErr) return Result.from(null)
 
-  const maybeContents = reader.read(contentSize)
-  if (maybeContents.size !== contentSize) return { valid: false, reason: 'Insufficient bytes (reading section contents)'}
-
-  const contents = maybeContents.bytes
-  return { valid: true, id: sectionId, contents }
+  return Result.pipeK<any>(
+    (id: number) => {
+      section.id = id
+      return Result.from({ id })
+    },
+    () => {
+      const contentSize = readUint(reader)
+      if (contentSize.isErr) return contentSize
+      return reader.readExact(contentSize.unwrap())
+    },
+    (content: number[]) => Result.from({ ...section, content })
+  )(initial)
 }
 
-export const readUint = (reader: ByteReader) => {
+export const readUint = (reader: ByteReader): Result<number> => {
   let value = 0
   for (let done=false, i=0; !done; i++) {
-    const maybeByte = reader.read(1)
-    if (maybeByte.size === 0) return new Result(new Error('Insufficient bytes (reading uint)'))
-    const byte = maybeByte.bytes[0]
+    const bytes = reader.readExact(1)
+    if (bytes.isErr) return Result.throw('Insufficient bytes (reading uint)')
+    const byte = bytes.unwrap()[0]
     done  = !(byte & 0x80)
     const partialValue = byte & ~0x80
     value += partialValue << (i * 8)

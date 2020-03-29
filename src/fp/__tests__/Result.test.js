@@ -12,8 +12,8 @@ describe('Result', () => {
       .map(double)
       .map(genError)
       .map(double)
-    expect(result.isErr()).toEqual(true)
-    expect(result.isOk()).toEqual(false)
+    expect(result.isErr).toEqual(true)
+    expect(result.isOk).toEqual(false)
   })
 
   it('propagates values forward', () => {
@@ -21,8 +21,8 @@ describe('Result', () => {
       .map(double)
       .map(double)
       .map(double)
-    expect(result.isErr()).toEqual(false)
-    expect(result.isOk()).toEqual(true)
+    expect(result.isErr).toEqual(false)
+    expect(result.isOk).toEqual(true)
   })
 
   it('unwraps values', () => {
@@ -50,7 +50,7 @@ describe('Result', () => {
         return Result.from(123)
       })
       .bind(maybeDouble)
-    expect(result.isErr()).toEqual(true)
+    expect(result.isErr).toEqual(true)
     expect(touched).toEqual(false)
   })
 })
