@@ -1,8 +1,11 @@
 import ByteReader from '../ByteReader'
 import Result from '../../fp/Result'
-import { header, SectionId, ValType } from '../wasm'
+import { header, ExportDesc, SectionId, ValType } from '../wasm'
 import { decodeWasm, readUint, readSection } from '../decode'
-import { adderBytes, typeSection, functionSection } from '../mocks/mocks'
+import {
+  adderBytes,
+  codeSection, exportSection, functionSection, typeSection
+} from '../mocks/mocks'
 
 const empty = new Uint8Array([])
 
@@ -85,7 +88,7 @@ describe('section decoding', () => {
     expect(readSection(reader).unwrap()).toMatchObject({ id: SectionId.Type })
     expect(readSection(reader).unwrap()).toMatchObject({ id: SectionId.Function })
     const result = readSection(reader)
-    expect(result).toEqual(Result.none)
+    expect(result).toEqual(Result.None)
   })
 })
 
@@ -100,5 +103,43 @@ describe('type section decoding', () => {
         { params: [ValType.i32, ValType.i32], results: [ValType.i32] },
       ]
     })
+  })
+})
+
+describe('function section decoding', () => {
+  it('decodes the function indexes', () => {
+    const reader = ByteReader.from(functionSection)
+    const result = readSection(reader)
+    expect(result.isOk).toEqual(true)
+    expect(result.unwrap()).toMatchObject({
+      id: SectionId.Function,
+      content: [0]
+    })
+  })
+})
+
+describe('exports section decoding', () => {
+  it.only('decodes the exports', () => {
+    const reader = ByteReader.from(exportSection)
+    const result = readSection(reader)
+    expect(result.isOk).toEqual(true)
+    expect(result.unwrap()).toMatchObject({
+      id: SectionId.Export,
+      content: [
+        { name: 'add', desc: ExportDesc.Func, index: 0 },
+      ]
+    })
+  })
+})
+
+describe('code section decoding', () => {
+  it.only('decodes the code section', () => {
+    const reader = ByteReader.from(codeSection)
+    const result = readSection(reader)
+    expect(result.isOk).toEqual(true)
+    const section = result.unwrap()
+    expect(section.id).toEqual(SectionId.Code)
+    expect(section.content[0].locals).toEqual([])
+    expect(section.content[0].code.length).toEqual(6)
   })
 })

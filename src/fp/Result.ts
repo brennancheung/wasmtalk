@@ -1,5 +1,6 @@
 class Result<T> {
   value: T | Error
+
   constructor(v: T | Error) {
     this.value = v
   }
@@ -9,8 +10,8 @@ class Result<T> {
   }
 
   // When we only care if something succeeded and the contents are irrelevant
-  static any = new Result<any>(true)
-  static none = new Result<any>(null) // Conflating with Maybe/Option monad for convenience
+  static Ok = new Result<any>(true)
+  static None = new Result<any>(null) // Conflating with Maybe/Option monad for convenience
 
   // Performs pointwise Kleisi composition (composing `bind` calls).
   // Makes longer monadic chains much easier to read and write.
@@ -26,7 +27,7 @@ class Result<T> {
   }
 
   // Transposes Result<T>[] into Result<T[]>
-  // In other words, if any of the results are errored, the entire result is an error.
+  // If any of the results are errored, the entire result is an error.
   static transposeArray<T>(arr: Result<T>[]): Result<T[]> {
     let results: T[] = []
     for (let i=0; i<arr.length; i++) {
