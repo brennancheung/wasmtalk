@@ -1,4 +1,4 @@
-import { header, ExportDesc, SectionId, ValType } from './wasm'
+import { header, ExportDesc, Op, SectionId, ValType } from './wasm'
 import { equals } from 'ramda'
 import { collectN } from '../util'
 import ByteReader from './ByteReader'
@@ -159,7 +159,7 @@ interface Local {
 
 interface CodeEntry {
   locals: Local[]
-  code: number[]
+  code: OpCode[]
 }
 
 export const readCodeSection = (bytes: number[]): Result<CodeEntry[]> => {
@@ -188,8 +188,46 @@ export const readCodeEntry = (reader: ByteReader): GenResult<CodeEntry> => () =>
       // just use a big number to read all available bytes.
       return codeReader.read(0xFFFF)
     },
-    (code: { size: number, bytes: number[] }) => {
-      entry.code = code.bytes
+    ({ bytes }) => {
+      const opReader = ByteReader.from(bytes)
+      let ops = []
+      while (opReader.hasNext()) {
+        ops.push(readOpCode(opReader))
+      }
+      return Result.transposeArray<OpCode>(ops)
+    },
+    (ops: OpCode[]) => {
+      entry.code = ops
+      return Result.from(entry)
+    }
+  )
+}
+
+interface OpCode {
+  code: Op,
+  params?: any,
+}
+
+export const readOpCode = (reader: ByteReader): Result<OpCode> => {
+  let entry = {} as OpCode
+  const opsWithU32 = [
+    Op.br,
+    Op.brIf,
+    Op.call,
+    Op.localGet,
+    Op.localSet,
+    Op.localTee,
+    Op.globalGet,
+    Op.globalSet,
+  ]
+  return reader.readByte().chainK(
+    (op: number) => {
+      entry.code = op
+      if (opsWithU32.includes(op)) {
+        const u32 = reader.readByte()
+        if (u32.isErr) return Result.throw('Unexpected EOF reading op-codes')
+        entry.params = u32.unwrap()
+      }
       return Result.from(entry)
     }
   )
@@ -197,6 +235,9 @@ export const readCodeEntry = (reader: ByteReader): GenResult<CodeEntry> => () =>
 
 const readLocal = (reader: ByteReader): GenResult<Local> => () => {
   let local = {} as Local
+  // TODO: I might want to expand out the count.
+  // The 'n' (u32) represents how many times the valtype should be repeated.
+  // locals ::= n:u32 t:valtype
   return readUint(reader).chainK(
     (count: number) => {
       local.count = count

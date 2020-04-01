@@ -1,6 +1,6 @@
 import ByteReader from '../ByteReader'
 import Result from '../../fp/Result'
-import { header, ExportDesc, SectionId, ValType } from '../wasm'
+import { header, ExportDesc, Op, SectionId, ValType } from '../wasm'
 import { decodeWasm, readUint, readSection } from '../decode'
 import {
   adderBytes,
@@ -140,6 +140,11 @@ describe('code section decoding', () => {
     const section = result.unwrap()
     expect(section.id).toEqual(SectionId.Code)
     expect(section.content[0].locals).toEqual([])
-    expect(section.content[0].code.length).toEqual(6)
+    expect(section.content[0].code).toEqual([
+      { code: Op.localGet, params: 0 },
+      { code: Op.localGet, params: 1 },
+      { code: Op.i32Add },
+      { code: Op.end },
+    ])
   })
 })

@@ -28,7 +28,7 @@ class ByteReader {
 
   readExact (numBytes: number): Result<number[]> {
     const value = this.read(numBytes)
-    if (value.isErr) return new Result<number[]>(value.error())
+    if (value.isErr) return new Result<number[]>(value.error)
     const unwrapped = value.unwrap()
     if (unwrapped.size !== numBytes) {
       return new Result<number[]>(new Error('Insufficient bytes'))
@@ -40,6 +40,10 @@ class ByteReader {
     const result = this.readExact(1)
     if (result.isErr) return Result.from<number>(result.error)
     return Result.from(result.unwrap()[0])
+  }
+
+  hasNext (): boolean {
+    return this.cursor < this.bytes.length
   }
 }
 
