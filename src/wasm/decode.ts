@@ -16,7 +16,7 @@ export const decodeU32 = (bytes: number[]) => {
 export const decodeWasm = (bytes: Uint8Array) => {
   const reader = new ByteReader(bytes)
 
-  return Result.pipeK(
+  return reader.readExact(4).chainK(
     (_header: number[]) => {
       if (!equals(Array.from(_header), header)) return Result.throw('Invalid header')
       return Result.Ok // value could be anything, we ignore it in the next step
@@ -24,7 +24,7 @@ export const decodeWasm = (bytes: Uint8Array) => {
     () => reader.readExact(4),
     bytes => Result.from(decodeU32(bytes)),
     version => Result.from({ version })
-  )(reader.readExact(4))
+  )
 }
 
 type SectionContent = any
@@ -53,7 +53,7 @@ export const readSection = (reader: ByteReader) => {
     [SectionId.Data]:     unimplemented,
   }
 
-  return Result.pipeK(
+  return initial.chainK(
     (id: number) => {
       section.id = id
       return Result.Ok
@@ -71,7 +71,7 @@ export const readSection = (reader: ByteReader) => {
     (content) => {
       return Result.from({ ...section, content })
     }
-  )(initial)
+  )
 }
 
 export const readUint = (reader: ByteReader): Result<number> => {
@@ -88,13 +88,13 @@ export const readUint = (reader: ByteReader): Result<number> => {
 }
 
 export const readString = (reader: ByteReader): Result<string> => {
-  return Result.pipeK(
+  return readUint(reader).chainK(
     (strLen: number) => reader.readExact(strLen),
     (bytes: number[]) => {
       const str = bytes.map(x => String.fromCharCode(x)).join('')
       return Result.from(str)
     }
-  )(readUint(reader))
+  )
 }
 
 export const unimplemented = (bytes: number[]) => Result.Ok
@@ -106,10 +106,9 @@ interface TypeFunc {
 
 export const readTypeSection = (bytes: number[]): Result<TypeFunc[]> => {
   const reader = ByteReader.from(bytes)
-  const numParams = readUint(reader)
-  if (numParams.isErr) return Result.throw('Insufficient bytes reading type section')
-  const typeFuncs = collectN<TypeFunc>(numParams.unwrap(), readFuncType(reader))
-  return Result.transposeArray<TypeFunc>(typeFuncs)
+  return readUint(reader).chainK(
+    (numParams: number) => collectN<TypeFunc>(numParams, readFuncType(reader))
+  )
 }
 
 // commonly used for passing callbacks for partial application
@@ -117,30 +116,24 @@ type GenResult<T> = () => Result<T>
 
 export const readFuncType = (reader: ByteReader): GenResult<TypeFunc> => () => {
   let tf = {} as TypeFunc
-  return Result.pipeK(
+  return reader.readByte().chainK(
     (magic: number) => {
       return magic === 0x60
         ? Result.Ok
         : Result.throw('Magic header value (0x60) not found while reading FuncType')
     },
     () => readUint(reader),
-    (numParams: number) => {
-      const params = collectN<ValType>(numParams, readValType(reader))
-      return Result.transposeArray<ValType>(params)
-    },
+    (numParams: number) => collectN<ValType>(numParams, readValType(reader)),
     (params) => {
       tf.params = params
       return readUint(reader)
     },
-    (numResults: number) => {
-      const results = collectN<ValType>(numResults, readValType(reader))
-      return Result.transposeArray<ValType>(results)
-    },
+    (numResults: number) => collectN<ValType>(numResults, readValType(reader)),
     (results) => {
       tf.results = results
       return Result.from(tf)
     }
-  )(reader.readByte())
+  )
 }
 
 export const readValType = (reader: ByteReader): GenResult<ValType> => () => {
@@ -153,10 +146,11 @@ export const readValType = (reader: ByteReader): GenResult<ValType> => () => {
 // Function Section associates the Code section with the Type section
 export const readFunctionSection = (bytes: number[]): Result<number[]> => {
   const reader = ByteReader.from(bytes)
-  const numFuncIdx = readUint(reader)
-  if (numFuncIdx.isErr) return Result.throw('Insufficient bytes reading Function section')
-  return reader.readExact(numFuncIdx.unwrap())
+  return readUint(reader).chainK(
+    (numFuncIdx: number) => reader.readExact(numFuncIdx)
+  )
 }
+
 
 interface Local {
   count: number,
@@ -170,26 +164,23 @@ interface CodeEntry {
 
 export const readCodeSection = (bytes: number[]): Result<CodeEntry[]> => {
   const reader = ByteReader.from(bytes)
-  const numEntries = readUint(reader)
-  if (numEntries.isErr) return Result.throw('Insufficient bytes reading Code section')
-  const entries = collectN<CodeEntry>(numEntries.unwrap(), readCodeEntry(reader))
-  return Result.transposeArray<CodeEntry>(entries)
+  return readUint(reader).chainK(
+    (numEntries: number) => collectN<CodeEntry>(numEntries, readCodeEntry(reader))
+  )
 }
+
 
 export const readCodeEntry = (reader: ByteReader): GenResult<CodeEntry> => () => {
   let entry = {} as CodeEntry
   let codeReader: ByteReader
-  return Result.pipeK(
+  return readUint(reader).chainK(
     (numBytes: number) => reader.readExact(numBytes),
     (bytes: number[]) => Result.from(ByteReader.from(bytes)),
     (_codeReader: ByteReader) => {
       codeReader = _codeReader
       return readUint(codeReader)
     },
-    (numLocals: number) => {
-      const locals = collectN<Local>(numLocals, readLocal(codeReader))
-      return Result.transposeArray<Local>(locals)
-    },
+    (numLocals: number) => collectN<Local>(numLocals, readLocal(codeReader)),
     (locals: Local[]) => {
       entry.locals = locals
       // It is difficult to determine the size of the `expr` part of the function
@@ -201,12 +192,12 @@ export const readCodeEntry = (reader: ByteReader): GenResult<CodeEntry> => () =>
       entry.code = code.bytes
       return Result.from(entry)
     }
-  )(readUint(reader))
+  )
 }
 
 const readLocal = (reader: ByteReader): GenResult<Local> => () => {
   let local = {} as Local
-  return Result.pipeK(
+  return readUint(reader).chainK(
     (count: number) => {
       local.count = count
       return reader.readByte()
@@ -215,7 +206,7 @@ const readLocal = (reader: ByteReader): GenResult<Local> => () => {
       local.type = type
       return Result.from(local)
     }
-  )(readUint(reader))
+  )
 }
 
 interface ExportEntry {
@@ -226,15 +217,14 @@ interface ExportEntry {
 
 export const readExportSection = (bytes: number[]): Result<ExportEntry[]> => {
   const reader = ByteReader.from(bytes)
-  const numExports = readUint(reader)
-  if (numExports.isErr) return Result.throw('Insufficient bytes reading exports section')
-  const entries = collectN<ExportEntry>(numExports.unwrap(), readExport(reader))
-  return Result.transposeArray<ExportEntry>(entries)
+  return readUint(reader).chainK(
+    (numExports: number) => collectN<ExportEntry>(numExports, readExport(reader)),
+  )
 }
 
 export const readExport = (reader: ByteReader): GenResult<ExportEntry> => () => {
   let entry = {} as ExportEntry
-  return Result.pipeK(
+  return readString(reader).chainK(
     (name: string) => {
       entry.name = name
       return reader.readByte()
@@ -247,5 +237,5 @@ export const readExport = (reader: ByteReader): GenResult<ExportEntry> => () => 
       entry.index = index
       return Result.from(entry)
     }
-  )(readString(reader))
+  )
 }

@@ -9,6 +9,8 @@ export const iota = (n: number): number[] => {
   return arr
 }
 
-// These are similar but the type checking provides some small benefit.
 export const times = (n: number, fn: SideEffectFn) => iota(n).map(fn)
-export const collectN = <T>(n: number, fn: ResultFn<T>): Result<T>[] => iota(n).map(fn)
+
+// Convenience util to collect a bunch of results together into a single array.
+export const collectN = <T>(n: number, fn: ResultFn<T>): Result<T[]> =>
+  Result.transposeArray<T>(iota(n).map(fn))

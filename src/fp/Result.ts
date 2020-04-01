@@ -1,3 +1,5 @@
+type Point = (v: any) => Result<any>
+
 class Result<T> {
   value: T | Error
 
@@ -15,7 +17,7 @@ class Result<T> {
 
   // Performs pointwise Kleisi composition (composing `bind` calls).
   // Makes longer monadic chains much easier to read and write.
-  static pipeK(...fns: Array<(v: any) => Result<any>>): (v: any) => Result<any> {
+  static pipeK(...fns: Array<Point>): Point {
     return (initial: Result<any>): Result<any> =>
       initial.isErr
         ? initial
@@ -37,11 +39,20 @@ class Result<T> {
     return Result.from(results)
   }
 
+  // Like pipeK but allows initial Result<T> param to be specified first.
+  // This makes the code read more linear.
+  chainK(...fns: Array<Point>): Result<any> {
+    return Result.pipeK(...fns)(this)
+  }
+
   map<U> (f: (v: T | Error) => U): Result<U> {
     if (this.value instanceof Error) return Result.from<U>(this.value)
     return new Result(f(this.value))
   }
 
+  // Kleisli composition.  Calls the passed function iff `this.value` is not an error.
+  // This simplifies code by removing the requirement that functions handle
+  // errors explicitly.
   bind<U> (f: (v: T) => Result<U>): Result<U> {
     if (this.value instanceof Error) return Result.from<U>(this.value)
     return f(this.value)
