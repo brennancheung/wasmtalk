@@ -119,7 +119,7 @@ describe('function section decoding', () => {
 })
 
 describe('exports section decoding', () => {
-  it.only('decodes the exports', () => {
+  it('decodes the exports', () => {
     const reader = ByteReader.from(exportSection)
     const result = readSection(reader)
     expect(result.isOk).toEqual(true)
@@ -133,7 +133,7 @@ describe('exports section decoding', () => {
 })
 
 describe('code section decoding', () => {
-  it.only('decodes the code section', () => {
+  it('decodes the code section', () => {
     const reader = ByteReader.from(codeSection)
     const result = readSection(reader)
     expect(result.isOk).toEqual(true)
@@ -147,4 +147,6 @@ describe('code section decoding', () => {
       { code: Op.end },
     ])
   })
+
+  // TODO: test for decoding memory op codes
 })

@@ -220,6 +220,14 @@ export const readOpCode = (reader: ByteReader): Result<OpCode> => {
     Op.globalGet,
     Op.globalSet,
   ]
+  const loadOps = [
+    Op.i32Load, Op.i64Load, Op.f32Load, Op.f64Load,
+    Op.i32Load8s, Op.i32Load8u, Op.i32Load16s, Op.i32Load16u,
+    Op.i64Load8s, Op.i64Load8u, Op.i64Load16s, Op.i64Load16u,
+    Op.i64Load32s, Op.i64Load32u,
+  ]
+  const memResizeOps = [Op.memoryGrow, Op.memorySize]
+
   return reader.readByte().chainK(
     (op: number) => {
       entry.code = op
@@ -228,7 +236,35 @@ export const readOpCode = (reader: ByteReader): Result<OpCode> => {
         if (u32.isErr) return Result.throw('Unexpected EOF reading op-codes')
         entry.params = u32.unwrap()
       }
+      if (memResizeOps.includes(op)) {
+        // memory.size and memory.grow have a 0x00 that we just throw away
+        const u32 = reader.readByte()
+        if (u32.isErr) return Result.throw('Unexpected EOF reading op-codes')
+      }
+      if ([...loadOps].includes(op)) {
+        const memArg = readMemArg(reader)
+        if (memArg.isErr) return Result.throw('Unexpected EOF reading memory op code')
+        entry.params = memArg
+      }
       return Result.from(entry)
+    }
+  )
+}
+
+interface MemArg {
+  offset: number
+  align: number
+}
+const readMemArg = (reader: ByteReader): Result<MemArg> => {
+  let memArg = {} as MemArg
+  return readUint(reader).chainK(
+    (offset: number) => {
+      memArg.offset = offset
+      return readUint(reader)
+    },
+    (align: number) => {
+      memArg.align = align
+      return Result.from(memArg)
     }
   )
 }
