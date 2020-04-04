@@ -4,7 +4,7 @@ import { collectN } from '../util'
 import ByteReader from './ByteReader'
 import Result from '../fp/Result'
 
-export const decodeU32 = (bytes: number[]) => {
+export const decodeU32 = (bytes: number[]): number => {
   const num =
     bytes[0] +
     (bytes[1] << 8) +
@@ -13,8 +13,13 @@ export const decodeU32 = (bytes: number[]) => {
   return num
 }
 
-export const decodeWasm = (bytes: Uint8Array) => {
+export interface WasmModule {
+  version: number,
+  sections: SectionContent[],
+}
+export const decodeWasm = (bytes: Uint8Array): Result<WasmModule> => {
   const reader = new ByteReader(bytes)
+  const wasmModule = {} as WasmModule
 
   return reader.readExact(4).chainK(
     (_header: number[]) => {
@@ -23,14 +28,33 @@ export const decodeWasm = (bytes: Uint8Array) => {
     },
     () => reader.readExact(4),
     bytes => Result.from(decodeU32(bytes)),
-    version => Result.from({ version })
+    (version: number) => {
+      wasmModule.version = version
+      return readSections(reader)
+    },
+    (sections: SectionContent[]) => {
+      wasmModule.sections = sections
+      return Result.from(wasmModule)
+    }
   )
 }
 
-type SectionContent = any
+export const readSections = (reader: ByteReader): Result<SectionContent[]> => {
+  let sections: SectionContent[] = []
+  for (;;) {
+    const section = readSection(reader)
+    if (section === Result.None) return Result.from(sections)
+    sections.push(section.unwrap())
+  }
+}
 
-export const readSection = (reader: ByteReader) => {
-  let section:any = {}
+export interface SectionContent {
+  id: SectionId,
+  content: any[],
+}
+
+export const readSection = (reader: ByteReader): Result<SectionContent> => {
+  let section = {} as SectionContent
 
   // The WASM binary doesn't provide a total size to expect at the beginning of
   // the file so we have no choice but to try to read and if there are
@@ -65,11 +89,12 @@ export const readSection = (reader: ByteReader) => {
     },
     (bytes: number[]) => {
       const id: SectionId = section.id
-      const decoder: ((bytes: number[]) => Result<SectionContent>) = sectionDecoders[id]
+      const decoder = sectionDecoders[id]
       return decoder(bytes)
     },
     (content) => {
-      return Result.from({ ...section, content })
+      section.content = content
+      return Result.from(section)
     }
   )
 }
@@ -99,7 +124,7 @@ export const readString = (reader: ByteReader): Result<string> => {
 
 export const unimplemented = (bytes: number[]) => Result.Ok
 
-interface TypeFunc {
+export interface TypeFunc {
   params: ValType[],
   results: ValType[],
 }
@@ -152,12 +177,12 @@ export const readFunctionSection = (bytes: number[]): Result<number[]> => {
 }
 
 
-interface Local {
+export interface Local {
   count: number,
   type: ValType,
 }
 
-interface CodeEntry {
+export interface CodeEntry {
   locals: Local[]
   code: OpCode[]
 }
@@ -203,30 +228,33 @@ export const readCodeEntry = (reader: ByteReader): GenResult<CodeEntry> => () =>
   )
 }
 
-interface OpCode {
+export interface OpCode {
   code: Op,
   params?: any,
 }
 
+export const opsWithU32 = [
+  Op.br,
+  Op.brIf,
+  Op.call,
+  Op.localGet,
+  Op.localSet,
+  Op.localTee,
+  Op.globalGet,
+  Op.globalSet,
+]
+
+export const loadOps = [
+  Op.i32Load, Op.i64Load, Op.f32Load, Op.f64Load,
+  Op.i32Load8s, Op.i32Load8u, Op.i32Load16s, Op.i32Load16u,
+  Op.i64Load8s, Op.i64Load8u, Op.i64Load16s, Op.i64Load16u,
+  Op.i64Load32s, Op.i64Load32u,
+]
+
+export const memResizeOps = [Op.memoryGrow, Op.memorySize]
+
 export const readOpCode = (reader: ByteReader): Result<OpCode> => {
   let entry = {} as OpCode
-  const opsWithU32 = [
-    Op.br,
-    Op.brIf,
-    Op.call,
-    Op.localGet,
-    Op.localSet,
-    Op.localTee,
-    Op.globalGet,
-    Op.globalSet,
-  ]
-  const loadOps = [
-    Op.i32Load, Op.i64Load, Op.f32Load, Op.f64Load,
-    Op.i32Load8s, Op.i32Load8u, Op.i32Load16s, Op.i32Load16u,
-    Op.i64Load8s, Op.i64Load8u, Op.i64Load16s, Op.i64Load16u,
-    Op.i64Load32s, Op.i64Load32u,
-  ]
-  const memResizeOps = [Op.memoryGrow, Op.memorySize]
 
   return reader.readByte().chainK(
     (op: number) => {
@@ -251,7 +279,7 @@ export const readOpCode = (reader: ByteReader): Result<OpCode> => {
   )
 }
 
-interface MemArg {
+export interface MemArg {
   offset: number
   align: number
 }
@@ -286,7 +314,7 @@ const readLocal = (reader: ByteReader): GenResult<Local> => () => {
   )
 }
 
-interface ExportEntry {
+export interface ExportEntry {
   name: string
   desc: ExportDesc
   index: number

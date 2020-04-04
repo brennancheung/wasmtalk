@@ -29,6 +29,13 @@ describe('decodeWasm', () => {
     expect(result.isErr).toEqual(true)
     expect(result.error).toEqual(new Error('Insufficient bytes'))
   })
+
+  it('reads the entire module', () => {
+    const bytes = new Uint8Array(adderBytes)
+    const result = decodeWasm(bytes)
+    const wasmModule = result.unwrap()
+    expect(wasmModule.sections.length).toEqual(4)
+  })
 })
 
 describe('read int', () => {
