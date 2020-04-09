@@ -1,4 +1,5 @@
 import { adderBytes } from '../mocks/mocks'
+import { Op, ValType } from '../wasm'
 import {
   encodeModule,
   encodeOp,
@@ -7,10 +8,8 @@ import {
   float,
   uint,
   sint,
-  ValType,
   vector,
-  Op,
-} from '../wasm'
+} from '../encode'
 
 describe('ValType', () => {
   it('encodes ValType to binary', () => {
