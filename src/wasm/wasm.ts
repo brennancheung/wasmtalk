@@ -242,7 +242,7 @@ export interface FuncSpec {
 }
 
 export interface ModuleSpec {
-  version?: number
-  types?: FuncType[],
-  functions?: FuncSpec[],
+  version: number
+  types: FuncType[],
+  functions: FuncSpec[],
 }
