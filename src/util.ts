@@ -4,7 +4,7 @@ type SideEffectFn = () => void
 type ResultFn<T> = () => Result<T>
 
 export const iota = (n: number): number[] => {
-  let arr = []
+  let arr = [] as number[]
   for (let i=0; i<n; i++) arr.push(i)
   return arr
 }

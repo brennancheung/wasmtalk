@@ -14,8 +14,12 @@ export const strIsInt = (str: string) => parseFloat(str) % 1 === 0
 export const strIsFloat = (str: string) => parseFloat(str) %1 !== 0
 
 export const parseInput = (str: string): Result<WasmType> => {
-  if (strIsInt(str)) return Result.from({ type: ValType.i32, value: parseFloat(str) })
-  if (strIsFloat(str)) return Result.from({ type: ValType.f32, value: parseFloat(str) })
+  if (!isNaN(str as any)) {
+    if (strIsInt(str)) return Result.from({ type: ValType.i32, value: parseFloat(str) })
+    if (strIsFloat(str)) return Result.from({ type: ValType.f32, value: parseFloat(str) })
+  }
+
+  if (str === 'i32.add') return Result.from({ type: 'Op', value: { code: Op.i32Add }})
   return Result.throw(`Unable to parse input: ${str}`)
 }
 
@@ -26,6 +30,13 @@ export class Repl {
   constructor () {
     this.stack = []
     this.ops = []
+  }
+
+  parse (input: string) {
+    const result = parseInput(input)
+    if (result.isErr) return result
+    const value = result.unwrap()
+    this.eval(value)
   }
 
   eval (input: WasmType) {
