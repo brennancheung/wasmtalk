@@ -1,6 +1,6 @@
 import React from 'react'
-import { ExportDesc, Op, SectionId, ValType } from './wasm/wasm'
-import { CodeEntry, ExportEntry, Local, OpCode, TypeFunc, SectionContent, WasmModule } from './wasm/decode'
+import { ExportDesc, Op, OpCode, SectionId, ValType } from './wasm/wasm'
+import { CodeEntry, ExportEntry, Local, TypeFunc, SectionContent, WasmModule } from './wasm/decode'
 import { iota } from './util'
 
 export const ModuleSummary = ({ wasmModule }: Props) => {

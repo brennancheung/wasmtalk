@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
 import { Repl, WasmType } from './repl/repl'
-import { ValType, Op } from './wasm/wasm'
-import { OpCode } from './wasm/decode'
+import { Op, OpCode, ValType } from './wasm/wasm'
 
 const repl = new Repl()
 

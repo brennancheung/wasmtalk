@@ -1,6 +1,5 @@
 import Result from "../fp/Result"
-import { Op, ValType } from "../wasm/wasm"
-import { OpCode } from "../wasm/decode"
+import { Op, OpCode, ValType } from "../wasm/wasm"
 
 interface I32 { type: ValType.i32, value: number }
 interface F32 { type: ValType.f32, value: number }

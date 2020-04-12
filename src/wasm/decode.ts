@@ -1,4 +1,4 @@
-import { header, ExportDesc, Op, SectionId, ValType } from './wasm'
+import { header, ExportDesc, Op, OpCode, SectionId, ValType } from './wasm'
 import { equals } from 'ramda'
 import { collectN } from '../util'
 import ByteReader from './ByteReader'
@@ -226,11 +226,6 @@ export const readCodeEntry = (reader: ByteReader): GenResult<CodeEntry> => () =>
       return Result.from(entry)
     }
   )
-}
-
-export interface OpCode {
-  code: Op,
-  params?: any,
 }
 
 export const opsWithU32 = [

@@ -246,3 +246,8 @@ export interface ModuleSpec {
   types: FuncType[],
   functions: FuncSpec[],
 }
+
+export interface OpCode {
+  code: Op,
+  params?: any,
+}
