@@ -15,7 +15,7 @@ export enum AstNodeType {
 
 export interface AstNode {
   type: AstNodeType
-  value: any
+  value?: any
   children: AstNode[]
 }
 
@@ -25,7 +25,10 @@ export const IntNode = n => ({ type: AstNodeType.Int, value: n, children: [] })
 export const FloatNode = n => ({ type: AstNodeType.Float, value: n, children: [] })
 
 // When operating in RPN mode, the children are not specified.
-export const AddNode = (left, right) => ({ type: AstNodeType.Add, children: [left, right] })
+export const AddNode = (left=undefined, right=undefined): AstNode => {
+  const children = (left === undefined || right === undefined) ? [] : [left, right]
+  return { type: AstNodeType.Add, children }
+}
 
 const evalFns = {
   [AstNodeType.Add]:

@@ -1,5 +1,7 @@
 import Result from "../fp/Result"
 import { Op, OpCode, ValType } from "../wasm/wasm"
+import { evalNode, AstNode, AstNodeType, IntNode, AddNode, FloatNode } from "../ast/AstNode"
+import { compile } from "../compile/compiler"
 
 interface I32 { type: ValType.i32, value: number }
 interface F32 { type: ValType.f32, value: number }
@@ -12,70 +14,51 @@ export type WasmType = I32 | F32 | I64 | F64 | OpInstr
 export const strIsInt = (str: string) => parseFloat(str) % 1 === 0
 export const strIsFloat = (str: string) => parseFloat(str) %1 !== 0
 
-export const parseInput = (str: string): Result<WasmType> => {
+export const parseInput = (str: string): Result<AstNode> => {
   if (!isNaN(str as any)) {
-    if (strIsInt(str)) return Result.from({ type: ValType.i32, value: parseFloat(str) })
-    if (strIsFloat(str)) return Result.from({ type: ValType.f32, value: parseFloat(str) })
+    if (strIsInt(str)) return Result.from(IntNode(parseInt(str)))
+    if (strIsFloat(str)) return Result.from(FloatNode(parseFloat(str)))
   }
 
-  if (str === 'i32.add') return Result.from({ type: 'Op', value: { code: Op.i32Add }})
+  if (str === '+') return Result.from(AddNode())
   return Result.throw(`Unable to parse input: ${str}`)
 }
 
 export class Repl {
-  public stack: WasmType[]
+  public stack: AstNode[]
   public ops: OpCode[]
+  public nodes: AstNode[]
 
   constructor () {
     this.stack = []
     this.ops = []
+    this.nodes = []
   }
 
   parse (input: string) {
     const result = parseInput(input)
     if (result.isErr) return result
-    const value = result.unwrap()
-    this.eval(value)
+    const node = result.unwrap()
+    this.nodes.push(node)
+    this.stack.push(this.eval(node))
+
   }
 
-  eval (input: WasmType) {
-    if (input.type === ValType.i32) {
-      this.stack.push(input)
-      this.ops.push({ code: Op.i32Const, params: input.value })
+  eval (node: AstNode): AstNode {
+    if (node.type === AstNodeType.Add) {
+      // TODO: perform validation
+      const left = this.stack.pop()
+      const right = this.stack.pop()
+      return evalNode(AddNode(left, right))
     }
-
-    if (input.type === ValType.f32) {
-      this.stack.push(input)
-      this.ops.push({ code: Op.f32Const, params: input.value })
-    }
-
-    if (input.type === ValType.i64) {
-      this.stack.push(input)
-      this.ops.push({ code: Op.i64Const, params: input.value })
-    }
-
-    if (input.type === ValType.f64) {
-      this.stack.push(input)
-      this.ops.push({ code: Op.f64Const, params: input.value })
-    }
-
-    if (input.type === 'Op') {
-      this.evalOp(input.value)
-    }
-  }
-
-  evalOp(op: OpCode) {
-    if (op.code === Op.i32Add) {
-      if (!this.validateStack([ValType.i32, ValType.i32])) throw new Error('Invalid params')
-      const n1 = this.stack.pop() as I32
-      const n2 = this.stack.pop() as I32
-      this.stack.push({ type: ValType.i32, value: n1.value + n2.value })
-      this.ops.push({ code: Op.i32Add })
-    }
+    return node
   }
 
   validateStack (params: ValType[]) {
     return true
   }
 
+  compile (): OpCode[] {
+    return compile(this.nodes)
+  }
 }
