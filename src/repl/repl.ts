@@ -41,7 +41,6 @@ export class Repl {
     const node = result.unwrap()
     this.nodes.push(node)
     this.stack.push(this.eval(node))
-
   }
 
   eval (node: AstNode): AstNode {
