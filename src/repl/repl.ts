@@ -1,5 +1,5 @@
 import Result from "../fp/Result"
-import { Op, OpCode, ValType } from "../wasm/wasm"
+import { OpCode, ValType } from "../wasm/wasm"
 import { evalNode, AstNode, AstNodeType, IntNode, AddNode, FloatNode } from "../ast/AstNode"
 import { compile } from "../compile/compiler"
 
