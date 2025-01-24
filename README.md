@@ -3,7 +3,7 @@
 ## Long term vision
 
 The long term vision for this repo is to create something akin to SmallTalk but
-with WebAssembly and more aligned with functionality programming and
+with WebAssembly and more aligned with functional programming and
 type driven development.  The ultimate goal is to experiment with different paradigms
 and see how productive a programmer can become given the right tools.
 
